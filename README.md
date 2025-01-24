@@ -307,7 +307,7 @@ public class DefaultApiExample {
 
 ## Documentation for API Endpoints
 
-All URIs are relative to *https://82rvkz5o22.execute-api.eu-central-1.amazonaws.com/prod/*
+All URIs are relative to *https://eumth8x973.execute-api.eu-central-1.amazonaws.com/prod/*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
