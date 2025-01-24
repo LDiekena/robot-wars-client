@@ -257,6 +257,7 @@ public class ClientMain {
             //Spielzüge solange bis keine mehr übrig sind oder selbst beendet worden ist
             while (!isTurnOver(currentMovementRate, getLastMoveFromPlayer(playerID, gameID, defaultApi), gameID)) {
                 System.out.println("Du hast noch " + currentMovementRate + " Züge zu deiner Verfügung");
+
                 System.out.println("Bitte gebe an welche Art von Zug du machen möchtest. \n1 - Deinen Roboter ein Feld bewegen \n2 - Die Richtung deines Roboters anpassen" +
                         "\n3 - Deinen Roboter angreifen lassen \n4 - Deinen Zug beenden");
 
@@ -305,6 +306,127 @@ public class ClientMain {
                 System.out.println("Fehlerhafte Eingabe, bitte versuche es erneut.");
                 playerID = sc.next();
             }
+            System.out.println("Das Spiel geht weiter, viel spaß!");
+            //Spielbeginn
+
+            Game gamedata = defaultApi.apiGamesGameIdGet(gameID);
+
+            choosenMap = gamedata.getMap();
+
+
+            //Print Startspielfeld
+            List<Object> mapItems;
+            Double mapSize = 0.0;
+            Double mapSizeX = 0.0;
+            String[] field = null;
+
+            List<Map> mapList = defaultApi.apiMapsGet();
+            for(Map map : mapList) {
+                Object mapID = map.get("id");
+                if(mapID.equals(choosenMap)) {
+                    mapSize = (Double) map.get("mapSize");
+                    mapSizeX = (Double) map.get("mapSizeX");
+                    mapItems = (List) map.get("mapItems");
+
+                    field = new String[mapSize.intValue()];
+                    Arrays.fill(field, " [ ]");
+
+                    for(Object item : mapItems) {
+                        Map<String, Object> itemMap = (Map<String, Object>) item;
+                        String type = (String) itemMap.get("type");
+                        Double index = (Double) itemMap.get("index");
+
+                         if (type.equals("WALL")) {
+                            field[index.intValue()] = " [W]";
+                        }
+                    }
+                }
+            }
+
+            Move lastMoveFromClientPlayer = getLastMoveFromPlayer(playerID, gameID, defaultApi);
+
+
+            String otherPlayerID;
+
+            if (gamedata.getPlayer().get(0).getPlayerId().equals(playerID)) {
+                otherPlayerID = gamedata.getPlayer().get(1).getPlayerId();
+                choosenRobot = gamedata.getPlayer().get(0).getRobotId();
+            } else {
+                otherPlayerID = gamedata.getPlayer().get(0).getPlayerId();
+                choosenRobot = gamedata.getPlayer().get(1).getRobotId();
+            }
+
+            Move lastMoveFromOtherPlayer = getLastMoveFromPlayer(otherPlayerID, gameID, defaultApi);
+
+            field[lastMoveFromClientPlayer.getMapIndex().intValue()] = " [X]";
+            field[lastMoveFromOtherPlayer.getMapIndex().intValue()] = " [X]";
+
+            printMap(field, mapSizeX.intValue());
+
+            Move lastMoveData = getLastMoveFromPlayer(playerID, gameID, defaultApi);
+
+
+            //if (lastMoveData.getMovementType() != MovementType.END) {
+                //Move
+                int currentMovementRate = 0;
+
+                /*
+                List<Move> movesFromGameList = gamedata.getMoves();
+
+
+                for (int counter = movesFromGameList.size() - 1; counter >= 0; counter++) {
+                    int usedTurns = 0;
+
+                    if () {
+                        //TODO: Count Züge die bisher vom Spieler in der Liste sind
+                    }
+
+                }
+
+                 */
+
+
+
+                List<Robot> robotList = defaultApi.apiRobotsGet();
+
+                for(int counter = robotList.size() - 1; counter >= 0; counter--) {
+                    if(robotList.get(counter).getId().equals(choosenRobot)) {
+                        currentMovementRate = robotList.get(counter).getMovementRate().intValue();
+                    }
+                }
+
+                while (!isTurnOver(currentMovementRate, getLastMoveFromPlayer(playerID, gameID, defaultApi), gameID)) {
+                    System.out.println("Du hast noch " + currentMovementRate + " Züge zu deiner Verfügung");
+
+                    System.out.println("Bitte gebe an welche Art von Zug du machen möchtest. \n1 - Deinen Roboter ein Feld bewegen \n2 - Die Richtung deines Roboters anpassen" +
+                            "\n3 - Deinen Roboter angreifen lassen \n4 - Deinen Zug beenden");
+                    sc = new Scanner(System.in);
+                    int turnChoice = sc.nextInt();
+
+                    while (turnChoice != 1 && turnChoice != 2 && turnChoice != 3 && turnChoice != 4) {
+                        System.out.println("Die Eingabe war fehlerhaft, bitte versuche es erneut.");
+                        turnChoice = sc.nextInt();
+                    }
+
+                    if(turnChoice == 1) {
+                        //MOVE
+                        move(playerID, gameID, mapSize.intValue(), mapSizeX.intValue());
+                        currentMovementRate--;
+
+                    } else if (turnChoice == 2) {
+                        //ALIGN
+                        align(playerID, gameID);
+                        currentMovementRate--;
+
+                    } else if (turnChoice == 3){
+                        //ATTACK
+                        attack(gameID, playerID);
+                        currentMovementRate--;
+                    } else {
+                        //TODO: END
+                    }
+                }
+            //}
 
             System.out.println("Die Rückkehr zu deinem Spiel war erfolgreich, viel Spaß beim weiterspielen!");
 
@@ -388,6 +510,7 @@ public class ClientMain {
                     currentMovementRate = 0;
                 }
             }
+
         }
     }
 
@@ -514,6 +637,10 @@ public class ClientMain {
         } else {
             System.out.println("Fehler beim durchführen des Zuges.");
         }
+
+        newMove.setAlign(lastMove.getAlign());
+        newMove.setMovementType(MovementType.MOVE);
+        newMove.setPlayerId(playerID);
 
         defaultApi.apiGamesGameIdMovePlayerPlayerIdPost(newMove, gameID, playerID);
     }

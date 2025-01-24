@@ -133,6 +133,20 @@ public class DefaultApiTest {
         // TODO: test validations
     }
     /**
+     * Liste von Spielen
+     *
+     * Liefert von allen Spielen
+     *
+     * @throws Exception
+     *          if the Api call fails
+     */
+    @Test
+    public void apiGamesGetTest() throws Exception {
+        List<Game> response = api.apiGamesGet();
+
+        // TODO: test validations
+    }
+    /**
      * Karten
      *
      * Liefert alle vorhandenen Karten
@@ -142,7 +156,22 @@ public class DefaultApiTest {
      */
     @Test
     public void apiMapsGetTest() throws Exception {
-        List<java.util.Map> response = api.apiMapsGet();
+        List<Map> response = api.apiMapsGet();
+
+        // TODO: test validations
+    }
+    /**
+     * Bestimmte Karte
+     *
+     * Liefert alle vorhandenen Karten
+     *
+     * @throws Exception
+     *          if the Api call fails
+     */
+    @Test
+    public void apiMapsMapIdGetTest() throws Exception {
+        String id = null;
+        Map response = api.apiMapsMapIdGet(id);
 
         // TODO: test validations
     }
