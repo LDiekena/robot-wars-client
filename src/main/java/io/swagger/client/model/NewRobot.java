@@ -26,7 +26,7 @@ import java.math.BigDecimal;
  * NewRobot
  */
 
-@javax.annotation.Generated(value = "io.swagger.codegen.v3.generators.java.JavaClientCodegen", date = "2025-01-14T09:23:18.850810896Z[GMT]")
+@javax.annotation.Generated(value = "io.swagger.codegen.v3.generators.java.JavaClientCodegen", date = "2025-01-24T08:58:18.098763241Z[GMT]")
 
 public class NewRobot {
   @SerializedName("name")
@@ -136,7 +136,7 @@ public class NewRobot {
 
 
   @Override
-  public boolean equals(java.lang.Object o) {
+  public boolean equals(Object o) {
     if (this == o) {
       return true;
     }
@@ -175,7 +175,7 @@ public class NewRobot {
    * Convert the given object to string with each line indented by 4 spaces
    * (except the first line).
    */
-  private String toIndentedString(java.lang.Object o) {
+  private String toIndentedString(Object o) {
     if (o == null) {
       return "null";
     }
