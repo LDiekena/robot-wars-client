@@ -142,12 +142,12 @@ public class ClientMain {
                 sc = new Scanner(System.in);
                 choosenMap = sc.nextLine();
 
-            /*
-            while (!doesChoosenMapExist(maps, choosenRobot)) {
-                System.out.println("Die eingegebene ID entspricht keiner existierender Karte, bitte versuche es erneut.");
-                choosenRobot = sc.nextLine();
-            }
-            */
+                /*
+                while (!doesChoosenMapExist(maps, choosenRobot)) {
+                    System.out.println("Die eingegebene ID entspricht keiner existierender Karte, bitte versuche es erneut.");
+                    choosenRobot = sc.nextLine();
+                }
+                */
 
                 //System.out.println("Deine Kartenauswahl war erfolgreich!");
 
@@ -155,11 +155,12 @@ public class ClientMain {
 
                 Game newGameData = defaultApi.apiGamesGamePost(newGame);
 
-                //Speichern der GameID und PlayerID zur weiteren Nutzung
+                //Speichern der GameID und PlayerID zur weiteren Nutzung, PlayerID bei der Spielerstellung immer erstmal erstes Element
                 gameID = newGameData.getId();
+                playerID = newGameData.getPlayer().getFirst().getPlayerId();
 
                 System.out.println("Die Spielerstellung war erfolgreich, dein Spiel trägt die ID " + gameID + ". Teile diese ID mit jemanden mit dem du" +
-                        " spielen möchtest.");
+                        " spielen möchtest. \nDeine PlayerID lautet " + playerID);
 
                 //Spielersteller joined dem erstellten Spiel
                 JoinGame joinGame = new JoinGame();
@@ -244,54 +245,55 @@ public class ClientMain {
 
             printMap(field, mapSizeX.intValue());
 
-            //Move
+            //Hol die Anzahl an Zügen den der Roboter machen kann
             int currentMovementRate = 0;
-
             List<Robot> robotList = defaultApi.apiRobotsGet();
-
             for(int counter = robotList.size() - 1; counter >= 0; counter--) {
                 if(robotList.get(counter).getId().equals(choosenRobot)) {
                     currentMovementRate = robotList.get(counter).getMovementRate().intValue();
                 }
             }
 
+            //Spielzüge solange bis keine mehr übrig sind oder selbst beendet worden ist
             while (!isTurnOver(currentMovementRate, getLastMoveFromPlayer(playerID, gameID, defaultApi), gameID)) {
                 System.out.println("Du hast noch " + currentMovementRate + " Züge zu deiner Verfügung");
 
                 System.out.println("Bitte gebe an welche Art von Zug du machen möchtest. \n1 - Deinen Roboter ein Feld bewegen \n2 - Die Richtung deines Roboters anpassen" +
                         "\n3 - Deinen Roboter angreifen lassen \n4 - Deinen Zug beenden");
+
                 sc = new Scanner(System.in);
                 int turnChoice = sc.nextInt();
 
+                //Fehlerfall Eingabe inkorrekt
                 while (turnChoice != 1 && turnChoice != 2 && turnChoice != 3 && turnChoice != 4) {
                     System.out.println("Die Eingabe war fehlerhaft, bitte versuche es erneut.");
                     turnChoice = sc.nextInt();
                 }
 
+                //Fall MOVE
                 if(turnChoice == 1) {
-                    //MOVE
                     move(playerID, gameID, mapSize.intValue(), mapSizeX.intValue());
                     currentMovementRate--;
-
+                //Fall ALIGN
                 } else if (turnChoice == 2) {
-                    //ALIGN
                     align(playerID, gameID);
                     currentMovementRate--;
-
+                //Fall ATTACK
                 } else if (turnChoice == 3){
-                    //ATTACK
                     attack(gameID, playerID);
                     currentMovementRate--;
+                //Fall END
                 } else {
-                    //TODO: END
+                    end(gameID, playerID);
+                    currentMovementRate = 0;
                 }
             }
 
-        //Bestehendes Spiel
+        //Bestehendes/ aktives Spiel
         } else {
             System.out.println("Bitte gebe die ID des Spiels ein zu welchem du zurückkehren möchtest:");
             gameID = sc.next();
-
+            //Fehlerfall Spiel existiert nicht
             while (!doesGameExist(gameID)) {
                 System.out.println("Fehlerhafte Eingabe, bitte versuche es erneut.");
                 gameID = sc.next();
@@ -299,7 +301,7 @@ public class ClientMain {
 
             System.out.println("Bitte gebe deine PlayerID ein:");
             playerID = sc.next();
-
+            //Fehlerfall Spieler existiert nicht im Spiel
             while (!doesPlayerExistInGame(gameID, playerID)) {
                 System.out.println("Fehlerhafte Eingabe, bitte versuche es erneut.");
                 playerID = sc.next();
@@ -342,6 +344,7 @@ public class ClientMain {
             }
 
             Move lastMoveFromClientPlayer = getLastMoveFromPlayer(playerID, gameID, defaultApi);
+
 
             String otherPlayerID;
 
@@ -424,9 +427,94 @@ public class ClientMain {
                     }
                 }
             //}
+
+            System.out.println("Die Rückkehr zu deinem Spiel war erfolgreich, viel Spaß beim weiterspielen!");
+
+            Game gameData = defaultApi.apiGamesGameIdGet(gameID);
+            choosenMap = gameData.getMap();
+
+            //Print Startspielfeld
+            List<Object> mapItems;
+            Double mapSize = 0.0;
+            Double mapSizeX = 0.0;
+            String[] field = null;
+
+            List<Map> mapList = defaultApi.apiMapsGet();
+            for(Map map : mapList) {
+                Object mapID = map.get("id");
+                if(mapID.equals(choosenMap)) {
+                    mapSize = (Double) map.get("mapSize");
+                    mapSizeX = (Double) map.get("mapSizeX");
+                    mapItems = (List) map.get("mapItems");
+
+                    field = new String[mapSize.intValue()];
+                    Arrays.fill(field, " [ ]");
+
+                    for(Object item : mapItems) {
+                        Map<String, Object> itemMap = (Map<String, Object>) item;
+                        String type = (String) itemMap.get("type");
+                        Double index = (Double) itemMap.get("index");
+
+                        if (type.equals("ROBOT")) {
+                            field[index.intValue()] = " [X]";
+                        } else if (type.equals("WALL")) {
+                            field[index.intValue()] = " [W]";
+                        }
+                    }
+                }
+            }
+
+            printMap(field, mapSizeX.intValue());
+
+            //TODO: Überprüfe ob Spieler dran ist, Move oder warten bis anderer Spieler Zug beendet und Spielfeld aktualisiert wurde
+
+            //Hol die Anzahl an Zügen den der Roboter machen kann
+            int currentMovementRate = 0;
+            List<Robot> robotList = defaultApi.apiRobotsGet();
+            for(int counter = robotList.size() - 1; counter >= 0; counter--) {
+                if(robotList.get(counter).getId().equals(choosenRobot)) {
+                    currentMovementRate = robotList.get(counter).getMovementRate().intValue();
+                }
+            }
+
+            //Spielzüge solange bis keine mehr übrig sind oder selbst beendet worden ist
+            while (!isTurnOver(currentMovementRate, getLastMoveFromPlayer(playerID, gameID, defaultApi), gameID)) {
+                System.out.println("Du hast noch " + currentMovementRate + " Züge zu deiner Verfügung");
+                System.out.println("Bitte gebe an welche Art von Zug du machen möchtest. \n1 - Deinen Roboter ein Feld bewegen \n2 - Die Richtung deines Roboters anpassen" +
+                        "\n3 - Deinen Roboter angreifen lassen \n4 - Deinen Zug beenden");
+
+                sc = new Scanner(System.in);
+                int turnChoice = sc.nextInt();
+
+                //Fehlerfall Eingabe inkorrekt
+                while (turnChoice != 1 && turnChoice != 2 && turnChoice != 3 && turnChoice != 4) {
+                    System.out.println("Die Eingabe war fehlerhaft, bitte versuche es erneut.");
+                    turnChoice = sc.nextInt();
+                }
+
+                //Fall MOVE
+                if(turnChoice == 1) {
+                    move(playerID, gameID, mapSize.intValue(), mapSizeX.intValue());
+                    currentMovementRate--;
+                    //Fall ALIGN
+                } else if (turnChoice == 2) {
+                    align(playerID, gameID);
+                    currentMovementRate--;
+                    //Fall ATTACK
+                } else if (turnChoice == 3){
+                    attack(gameID, playerID);
+                    currentMovementRate--;
+                    //Fall END
+                } else {
+                    end(gameID, playerID);
+                    currentMovementRate = 0;
+                }
+            }
+
         }
     }
 
+    //Methode zur Prüfung ob ein gewählter Roboter auch existiert
     public static boolean doesChoosenRobotExist(List<Robot> robotList, String robotID) throws ApiException {
         boolean robotExist = false;
         for (int counter = robotList.size() - 1; counter >= 0; counter--) {
@@ -439,6 +527,7 @@ public class ClientMain {
     }
 
     /*
+    //Methode zur Prüfung ob eine gewählte Karte auch existiert
     public static boolean doesMapExist(String mapID) throws ApiException {
         boolean MapExist = false;
          = defaultApi.apiMapsGet();
@@ -449,6 +538,7 @@ public class ClientMain {
     }
     */
 
+    //Methode zur Prüfung ob ein gewähltes Spiel auch existiert
     public static boolean doesGameExist(String gameID) throws ApiException {
         boolean gameExist = false;
         Game game = defaultApi.apiGamesGameIdGet(gameID);
@@ -458,10 +548,9 @@ public class ClientMain {
         return gameExist;
     }
 
+    //Methode zur Prüfung ob ein gewählter Roboter auch in dem gewählten Spiel existiert
     public static boolean doesPlayerExistInGame(String gameID, String playerID) throws ApiException {
         Game gameData = defaultApi.apiGamesGameIdGet(gameID);
-        System.out.println(gameData.getPlayer().get(0).getPlayerId());
-        System.out.println(gameData.getPlayer().get(1).getPlayerId());
         if(gameData.getPlayer().get(0).getPlayerId().equals(playerID)) {
             return true;
         } else if (gameData.getPlayer().get(1).getPlayerId().equals(playerID)) {
@@ -471,6 +560,7 @@ public class ClientMain {
         }
     }
 
+    //Methode zur Prüfung ob ein Spiel gestartet wurde
     public static boolean isGameStarted(String gameID) throws ApiException {
         boolean gameStarted = false;
         Game game = defaultApi.apiGamesGameIdGet(gameID);
@@ -479,6 +569,7 @@ public class ClientMain {
         }
         return gameStarted;
     }
+
 
     public static Move getLastMoveFromPlayer(String playerID, String gameID, DefaultApi defaultApi) throws ApiException {
         List<Move> movesData = defaultApi.apiGamesGameIdMoveGet(gameID);
@@ -492,6 +583,7 @@ public class ClientMain {
         }
         return lastMoveData;
     }
+
 
     public static boolean isTurnOver(int currentMovementRate, Move lastMove, String gameID) throws ApiException{
         List<Move> moves = defaultApi.apiGamesGameIdMoveGet(gameID);
@@ -514,6 +606,7 @@ public class ClientMain {
         }
     }
 
+    //Methode um den Roboter ein Feld zu bewegen (MOVE)
     public static void move(String playerID, String gameID, int mapSize, int mapSizeX) throws ApiException {
         NewMove newMove = new NewMove();
         Scanner sc = new Scanner(System.in);
@@ -528,16 +621,18 @@ public class ClientMain {
 
         Move lastMove = getLastMoveFromPlayer(playerID, gameID, defaultApi);
 
-        //TODO: Wall bisher nicht variabel!
-        if(directionChoice.equals("w")  && lastMove.getMapIndex().intValue() >= 8 && lastMove.getAlign().equals(Align.N)) {
+        //TODO: Wall bisher nicht
+        if(directionChoice.equals("w")  && lastMove.getMapIndex().intValue() >= (mapSizeX - 1) && lastMove.getMapIndex().intValue() >= 0
+                && lastMove.getAlign().equals(Align.N)) {
             newMove.setMapIndex(BigDecimal.valueOf(lastMove.getMapIndex().intValue() - mapSizeX));
-        } else if (directionChoice.equals("a") && (lastMove.getMapIndex().intValue() % mapSizeX) == 0 && lastMove.getAlign().equals(Align.W)) {
+        } else if (directionChoice.equals("a") && (lastMove.getMapIndex().intValue() % mapSizeX) == 0
+                && lastMove.getAlign().equals(Align.W)) {
             newMove.setMapIndex(BigDecimal.valueOf(lastMove.getMapIndex().intValue() - 1));
-        } else if (directionChoice.equals("s") && lastMove.getMapIndex().intValue() < mapSize - mapSizeX && lastMove.getAlign().equals(Align.S)) {
+        } else if (directionChoice.equals("s") && lastMove.getMapIndex().intValue() <= (mapSize - mapSizeX)
+                && lastMove.getAlign().equals(Align.S)) {
             newMove.setMapIndex(BigDecimal.valueOf(lastMove.getMapIndex().intValue() + mapSizeX));
-        } else if (directionChoice.equals("d") && (lastMove.getMapIndex().intValue() != 8 || lastMove.getMapIndex().intValue() != 17 ||
-                lastMove.getMapIndex().intValue() != 26 || lastMove.getMapIndex().intValue() != 35 || lastMove.getMapIndex().intValue() != 44) &&
-                lastMove.getAlign().equals(Align.E)) {
+        } else if (directionChoice.equals("d") && (lastMove.getMapIndex().intValue() % mapSizeX) == (mapSizeX - 1)
+                && lastMove.getAlign().equals(Align.E)) {
             newMove.setMapIndex(BigDecimal.valueOf(lastMove.getMapIndex().intValue() + 1));
         } else {
             System.out.println("Fehler beim durchführen des Zuges.");
@@ -550,6 +645,7 @@ public class ClientMain {
         defaultApi.apiGamesGameIdMovePlayerPlayerIdPost(newMove, gameID, playerID);
     }
 
+    //Methode um den Roboter auf dem aktuellen Feld zu drehen (ALIGN)
     public static void align(String playerID, String gameID) throws ApiException {
         NewMove newMove = new NewMove();
         Scanner sc = new Scanner(System.in);
@@ -593,6 +689,7 @@ public class ClientMain {
         defaultApi.apiGamesGameIdMovePlayerPlayerIdPost(newMove, gameID, playerID);
     }
 
+    //Methode um mit dem eigenen Roboter den Gegner anzugreifen
     public static void attack(String gameID, String playerID) throws ApiException {
         NewMove newMove = new NewMove();
 
@@ -606,4 +703,17 @@ public class ClientMain {
         defaultApi.apiGamesGameIdMovePlayerPlayerIdPost(newMove, gameID, playerID);
     }
 
+    //Methode um den eigenen Zug zu beenden
+    public static void end(String gameID, String playerID) throws ApiException {
+        NewMove newMove = new NewMove();
+
+        Move lastMove = getLastMoveFromPlayer(playerID, gameID, defaultApi);
+
+        newMove.setMovementType(MovementType.END);
+        newMove.setAlign(lastMove.getAlign());
+        newMove.setMapIndex(lastMove.getMapIndex());
+        newMove.setPlayerId(playerID);
+
+        defaultApi.apiGamesGameIdMovePlayerPlayerIdPost(newMove, gameID, playerID);
+    }
 }
